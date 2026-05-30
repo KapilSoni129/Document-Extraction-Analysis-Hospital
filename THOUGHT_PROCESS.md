@@ -228,3 +228,86 @@ Waiting period math: `is_within_waiting_period()` and `eligibility_date()`.
 - `test_financial.py` — 7 tests verifying exact amounts for TC004, TC006, TC010, TC015, TC016, TC018, TC022
 
 All expected values loaded from JSON files — single source of truth, no hardcoded assertions.
+
+---
+
+## Step 6c: Intake Agent (`app/agents/intake.py`)
+
+The intake agent validates basic eligibility before any document processing. Checks: member exists, category valid, minimum amount (₹500), submission deadline (30 days), initial 30-day waiting period.
+
+**Per-claim limit placement — a hard problem:**
+
+TC008 expects ₹7,500 to be rejected (per-claim limit ₹5,000). But TC006 (₹12,000 dental) and TC012 (₹8,000 consultation) expect the system to reach policy-level checks for exclusions.
+
+**Options I tried:**
+1. **Hard reject at intake** → TC006 and TC012 never reach policy evaluator. Wrong.
+2. **No per-claim check anywhere** → TC008 doesn't get rejected. Wrong.
+3. **Check in policy evaluator, after exclusion checks** → TC008 gets rejected (no exclusion applies), TC006 gets PARTIAL (exclusion found first), TC012 gets rejected for exclusion (found first). Correct!
+
+I went with option 3. The per-claim limit is a "last resort" — it only fires when no more specific rule (exclusion, pre-auth, line-item exclusion) already handles the claim.
+
+## Step 6d: Policy Evaluator (`app/agents/policy_evaluator.py`)
+
+The most complex agent. Runs these checks in order:
+1. Condition-specific waiting period (e.g., 90 days for diabetes)
+2. Exclusions (obesity, cosmetic, etc.)
+3. Pre-authorization (high-value diagnostics)
+4. Line-item exclusions (teeth whitening, LASIK)
+5. Per-claim limit (only if nothing above triggered)
+6. Fraud signals (same-day count, monthly count)
+7. Financial calculation (only if no hard rejects)
+
+**Exclusion matching — a subtle bug:**
+
+My first implementation used naive keyword matching: if any word >3 chars from the exclusion appears in the diagnosis, it's a match. This caused "Dental Caries" to match "Cosmetic dental procedures" because "dental" appears in both.
+
+**Options I considered:**
+- Require majority of keywords to match → "Morbid Obesity" only matches 1 of 3 keywords in "Obesity and weight loss programs" — misses a true positive
+- Exact substring match → too strict
+- LLM-based matching → too slow for a deterministic check
+- **Filter out generic context words** and match only on specific medical terms → correctly rejects "Dental Caries" while matching "Morbid Obesity". The generic words list and minimum keyword length live in `pipeline_config.json["policy_matching"]`
+
+## Step 8: Decision Maker and Graph Wiring
+
+### Decision Maker Logic
+
+Synthesizes all prior state into a final decision:
+
+```
+early_rejection → REJECTED
+doc_errors → None (action required, not a claim decision)
+cross_validation failure → None (action required)
+hard_reject policy checks → REJECTED
+fraud_signals → MANUAL_REVIEW
+line-item exclusions OR limit caps → PARTIAL
+everything else → APPROVED
+```
+
+**APPROVED vs PARTIAL — a subtle distinction:**
+
+Every claim with co-pay has `approved_amount < claimed_amount`. If I used `approved < claimed` as the PARTIAL signal, every single approved claim becomes PARTIAL.
+
+**My decision:** PARTIAL only when there's a *structural* reduction — items excluded, limits hit. Co-pay and network discount are normal policy mechanics → still APPROVED.
+
+### Graceful Degradation
+
+Each agent wrapped in try/except at the graph level. On failure: log to `component_failures`, skip agent, continue. Decision maker applies -0.2 confidence penalty per failed component.
+
+### LangGraph Wiring (`app/agents/graph.py`)
+
+Connected all agents with conditional edges:
+
+```
+intake → [early_rejection?] → decision_maker
+         [else] → doc_verifier → [doc_errors?] → decision_maker
+                                  [else] → doc_extractor → cross_validator → [mismatch?] → decision_maker
+                                                                              [else] → policy_evaluator → decision_maker
+```
+
+This ensures document-problem cases (TC001-TC003) stop early without wasting LLM calls.
+
+### Tests at This Stage
+
+- `test_intake.py` — 9 tests: valid claims pass, member not found, below minimum, deadline exceeded, waiting periods
+- `test_policy_evaluator.py` — 10 tests: exclusions, pre-auth, fraud signals, per-claim limit, financial calculations
+- `test_integration.py` — 10 tests: full pipeline end-to-end for key scenarios (approval, rejection, partial, manual review)
