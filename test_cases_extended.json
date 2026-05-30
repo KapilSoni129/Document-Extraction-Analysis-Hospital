@@ -1,0 +1,517 @@
+{
+  "version": "2.0",
+  "description": "Extended test cases (TC013–TC022) covering policy rules and scenarios not exercised by the original 12 cases.",
+  "test_cases": [
+    {
+      "case_id": "TC013",
+      "case_name": "Vision Category — Glasses Claim",
+      "description": "Valid vision claim for prescription glasses. Tests the VISION category which is absent from the original 12.",
+      "input": {
+        "member_id": "EMP002",
+        "policy_id": "PLUM_GHI_2024",
+        "claim_category": "VISION",
+        "treatment_date": "2024-10-10",
+        "claimed_amount": 4500,
+        "ytd_claims_amount": 2000,
+        "documents": [
+          {
+            "file_id": "F025",
+            "actual_type": "PRESCRIPTION",
+            "content": {
+              "doctor_name": "Dr. Anil Kapoor",
+              "doctor_registration": "MH/23456/2018",
+              "patient_name": "Priya Singh",
+              "date": "2024-10-10",
+              "diagnosis": "Myopia (Progressive)",
+              "treatment": "Corrective Lenses Prescribed",
+              "notes": "SPH: -2.50 (R), -2.75 (L), CYL: -0.50 both"
+            }
+          },
+          {
+            "file_id": "F026",
+            "actual_type": "HOSPITAL_BILL",
+            "content": {
+              "hospital_name": "VisionCare Opticals",
+              "patient_name": "Priya Singh",
+              "date": "2024-10-10",
+              "line_items": [
+                { "description": "Eye Examination", "amount": 500 },
+                { "description": "Prescription Glasses (Progressive)", "amount": 4000 }
+              ],
+              "total": 4500
+            }
+          }
+        ]
+      },
+      "expected": {
+        "decision": "APPROVED",
+        "approved_amount": 4500,
+        "notes": "Within vision sub-limit of ₹5,000. No co-pay for vision. Both eye exam and glasses are covered items.",
+        "confidence_score": "above 0.85"
+      }
+    },
+    {
+      "case_id": "TC014",
+      "case_name": "Vision — LASIK Exclusion",
+      "description": "Member claims LASIK surgery which is explicitly excluded under vision coverage.",
+      "input": {
+        "member_id": "EMP004",
+        "policy_id": "PLUM_GHI_2024",
+        "claim_category": "VISION",
+        "treatment_date": "2024-11-05",
+        "claimed_amount": 45000,
+        "documents": [
+          {
+            "file_id": "F027",
+            "actual_type": "PRESCRIPTION",
+            "content": {
+              "doctor_name": "Dr. Neha Jain",
+              "doctor_registration": "KA/34567/2016",
+              "patient_name": "Sneha Reddy",
+              "diagnosis": "High Myopia (-6.0D bilateral)",
+              "treatment": "LASIK Surgery recommended"
+            }
+          },
+          {
+            "file_id": "F028",
+            "actual_type": "HOSPITAL_BILL",
+            "content": {
+              "hospital_name": "Clear Vision Eye Centre",
+              "patient_name": "Sneha Reddy",
+              "date": "2024-11-05",
+              "line_items": [
+                { "description": "LASIK Surgery (Both Eyes)", "amount": 45000 }
+              ],
+              "total": 45000
+            }
+          }
+        ]
+      },
+      "expected": {
+        "decision": "REJECTED",
+        "rejection_reasons": ["EXCLUDED_PROCEDURE"],
+        "system_must": [
+          "Identify LASIK as an explicitly excluded procedure under vision coverage",
+          "Reference the exclusion list in the rejection message"
+        ]
+      }
+    },
+    {
+      "case_id": "TC015",
+      "case_name": "Dependent Claim — Spouse",
+      "description": "Claim submitted for EMP001's spouse (DEP001 — Sunita Kumar). Tests that the system handles dependent/family floater claims.",
+      "input": {
+        "member_id": "DEP001",
+        "policy_id": "PLUM_GHI_2024",
+        "claim_category": "CONSULTATION",
+        "treatment_date": "2024-10-20",
+        "claimed_amount": 2500,
+        "primary_member_id": "EMP001",
+        "documents": [
+          {
+            "file_id": "F029",
+            "actual_type": "PRESCRIPTION",
+            "content": {
+              "doctor_name": "Dr. Kavitha Rao",
+              "doctor_registration": "KA/89012/2019",
+              "patient_name": "Sunita Kumar",
+              "date": "2024-10-20",
+              "diagnosis": "Acute Migraine",
+              "medicines": ["Sumatriptan 50mg", "Ondansetron 4mg"]
+            }
+          },
+          {
+            "file_id": "F030",
+            "actual_type": "HOSPITAL_BILL",
+            "content": {
+              "hospital_name": "City Medical Centre, Bengaluru",
+              "patient_name": "Sunita Kumar",
+              "date": "2024-10-20",
+              "line_items": [
+                { "description": "Consultation Fee", "amount": 1500 },
+                { "description": "Medicines", "amount": 1000 }
+              ],
+              "total": 2500
+            }
+          }
+        ]
+      },
+      "expected": {
+        "decision": "APPROVED",
+        "approved_amount": 2250,
+        "notes": "Dependent (SPOUSE) covered under family floater. 10% co-pay applied on consultation (₹250 deducted). Within per-claim and sub-limits.",
+        "confidence_score": "above 0.85"
+      }
+    },
+    {
+      "case_id": "TC016",
+      "case_name": "Annual OPD Limit Exhausted",
+      "description": "Member has already used ₹48,000 of their ₹50,000 annual OPD limit. Claims ₹4,000 more — only ₹2,000 remaining.",
+      "input": {
+        "member_id": "EMP006",
+        "policy_id": "PLUM_GHI_2024",
+        "claim_category": "CONSULTATION",
+        "treatment_date": "2024-11-10",
+        "claimed_amount": 4000,
+        "ytd_claims_amount": 48000,
+        "documents": [
+          {
+            "file_id": "F031",
+            "actual_type": "PRESCRIPTION",
+            "content": {
+              "doctor_name": "Dr. M. Reddy",
+              "doctor_registration": "AP/67890/2017",
+              "patient_name": "Kavita Nair",
+              "date": "2024-11-10",
+              "diagnosis": "Seasonal Allergic Rhinitis",
+              "medicines": ["Montelukast 10mg", "Levocetirizine 5mg"]
+            }
+          },
+          {
+            "file_id": "F032",
+            "actual_type": "HOSPITAL_BILL",
+            "content": {
+              "hospital_name": "Apollo Hospitals",
+              "patient_name": "Kavita Nair",
+              "date": "2024-11-10",
+              "line_items": [
+                { "description": "Allergy Specialist Consultation", "amount": 2000 },
+                { "description": "Medicines", "amount": 2000 }
+              ],
+              "total": 4000
+            }
+          }
+        ]
+      },
+      "expected": {
+        "decision": "PARTIAL",
+        "approved_amount": 1800,
+        "notes": "Annual OPD limit remaining: ₹2,000. Network discount (20%) on ₹4,000 = ₹3,200. But capped at remaining limit ₹2,000. Co-pay (10%) on ₹2,000 = ₹200 deducted. Final: ₹1,800.",
+        "system_must": [
+          "Show the annual limit cap in the trace",
+          "Inform member of remaining annual balance after this claim"
+        ]
+      }
+    },
+    {
+      "case_id": "TC017",
+      "case_name": "Initial 30-Day Waiting Period",
+      "description": "New member EMP005 (joined 2024-09-01) submits a general consultation claim on 2024-09-20 — within the 30-day initial waiting period. Not a pre-existing condition, just too early.",
+      "input": {
+        "member_id": "EMP005",
+        "policy_id": "PLUM_GHI_2024",
+        "claim_category": "CONSULTATION",
+        "treatment_date": "2024-09-20",
+        "claimed_amount": 1800,
+        "documents": [
+          {
+            "file_id": "F033",
+            "actual_type": "PRESCRIPTION",
+            "content": {
+              "doctor_name": "Dr. A. Sharma",
+              "doctor_registration": "GJ/56789/2014",
+              "patient_name": "Vikram Joshi",
+              "date": "2024-09-20",
+              "diagnosis": "Acute Gastritis",
+              "medicines": ["Pantoprazole 40mg", "Domperidone 10mg"]
+            }
+          },
+          {
+            "file_id": "F034",
+            "actual_type": "HOSPITAL_BILL",
+            "content": {
+              "hospital_name": "Gujarat Medical Centre",
+              "patient_name": "Vikram Joshi",
+              "date": "2024-09-20",
+              "line_items": [
+                { "description": "Consultation Fee", "amount": 1000 },
+                { "description": "Medicines", "amount": 800 }
+              ],
+              "total": 1800
+            }
+          }
+        ]
+      },
+      "expected": {
+        "decision": "REJECTED",
+        "rejection_reasons": ["INITIAL_WAITING_PERIOD"],
+        "system_must": [
+          "State the 30-day initial waiting period rule",
+          "Show member's join date and treatment date",
+          "Tell the member from which date claims will be accepted (2024-10-01)"
+        ]
+      }
+    },
+    {
+      "case_id": "TC018",
+      "case_name": "Branded Drug Co-Pay (Pharmacy)",
+      "description": "Pharmacy claim with branded medicines when generic alternatives exist. Policy mandates 30% co-pay on branded drugs.",
+      "input": {
+        "member_id": "EMP003",
+        "policy_id": "PLUM_GHI_2024",
+        "claim_category": "PHARMACY",
+        "treatment_date": "2024-10-28",
+        "claimed_amount": 2400,
+        "ytd_claims_amount": 3000,
+        "documents": [
+          {
+            "file_id": "F035",
+            "actual_type": "PRESCRIPTION",
+            "content": {
+              "doctor_name": "Dr. R. Gupta",
+              "doctor_registration": "DL/34567/2016",
+              "patient_name": "Amit Verma",
+              "date": "2024-10-28",
+              "diagnosis": "Hypertension",
+              "medicines": ["Telma-40 (Telmisartan 40mg)", "Ecosprin-75 (Aspirin 75mg)"]
+            }
+          },
+          {
+            "file_id": "F036",
+            "actual_type": "PHARMACY_BILL",
+            "content": {
+              "pharmacy_name": "MedPlus Pharmacy",
+              "patient_name": "Amit Verma",
+              "date": "2024-10-28",
+              "line_items": [
+                { "description": "Telma-40 (Branded) x30", "amount": 1800 },
+                { "description": "Ecosprin-75 (Branded) x30", "amount": 600 }
+              ],
+              "total": 2400,
+              "generic_available": true
+            }
+          }
+        ]
+      },
+      "expected": {
+        "decision": "APPROVED",
+        "approved_amount": 1680,
+        "notes": "Branded drug co-pay of 30% applied. ₹2,400 × 0.70 = ₹1,680. Generic alternatives exist but branded prescribed.",
+        "system_must": [
+          "Identify medicines as branded drugs",
+          "Apply 30% branded drug co-pay",
+          "Show the co-pay calculation in the trace"
+        ]
+      }
+    },
+    {
+      "case_id": "TC019",
+      "case_name": "Submission Deadline Exceeded",
+      "description": "Treatment was on 2024-08-15 but claim submitted on 2024-10-20 — more than 30 days after treatment. Policy requires submission within 30 days.",
+      "input": {
+        "member_id": "EMP007",
+        "policy_id": "PLUM_GHI_2024",
+        "claim_category": "CONSULTATION",
+        "treatment_date": "2024-08-15",
+        "submission_date": "2024-10-20",
+        "claimed_amount": 3000,
+        "documents": [
+          {
+            "file_id": "F037",
+            "actual_type": "PRESCRIPTION",
+            "content": {
+              "doctor_name": "Dr. Suresh Patil",
+              "doctor_registration": "KA/45678/2015",
+              "patient_name": "Suresh Patil",
+              "date": "2024-08-15",
+              "diagnosis": "Lower Back Pain",
+              "medicines": ["Diclofenac 50mg", "Thiocolchicoside 4mg"]
+            }
+          },
+          {
+            "file_id": "F038",
+            "actual_type": "HOSPITAL_BILL",
+            "content": {
+              "hospital_name": "Manipal Hospitals",
+              "patient_name": "Suresh Patil",
+              "date": "2024-08-15",
+              "line_items": [
+                { "description": "Orthopaedic Consultation", "amount": 2000 },
+                { "description": "X-Ray Lumbar Spine", "amount": 1000 }
+              ],
+              "total": 3000
+            }
+          }
+        ]
+      },
+      "expected": {
+        "decision": "REJECTED",
+        "rejection_reasons": ["SUBMISSION_DEADLINE_EXCEEDED"],
+        "system_must": [
+          "Calculate days between treatment date and submission date (66 days)",
+          "State the 30-day submission window rule",
+          "Show the deadline that was missed"
+        ]
+      }
+    },
+    {
+      "case_id": "TC020",
+      "case_name": "Below Minimum Claim Amount",
+      "description": "Claim for ₹350 which is below the ₹500 minimum claim amount.",
+      "input": {
+        "member_id": "EMP004",
+        "policy_id": "PLUM_GHI_2024",
+        "claim_category": "PHARMACY",
+        "treatment_date": "2024-10-30",
+        "claimed_amount": 350,
+        "documents": [
+          {
+            "file_id": "F039",
+            "actual_type": "PRESCRIPTION",
+            "content": {
+              "doctor_name": "Dr. Lakshmi Nair",
+              "doctor_registration": "KA/67890/2016",
+              "patient_name": "Sneha Reddy",
+              "date": "2024-10-30",
+              "diagnosis": "Common Cold",
+              "medicines": ["Cetirizine 10mg", "Paracetamol 500mg"]
+            }
+          },
+          {
+            "file_id": "F040",
+            "actual_type": "PHARMACY_BILL",
+            "content": {
+              "pharmacy_name": "Health First Pharmacy",
+              "patient_name": "Sneha Reddy",
+              "date": "2024-10-30",
+              "line_items": [
+                { "description": "Cetirizine 10mg x10", "amount": 150 },
+                { "description": "Paracetamol 500mg x10", "amount": 200 }
+              ],
+              "total": 350
+            }
+          }
+        ]
+      },
+      "expected": {
+        "decision": "REJECTED",
+        "rejection_reasons": ["BELOW_MINIMUM_AMOUNT"],
+        "system_must": [
+          "State the minimum claim amount (₹500)",
+          "Show the claimed amount (₹350)",
+          "Not process the claim further"
+        ]
+      }
+    },
+    {
+      "case_id": "TC021",
+      "case_name": "Monthly Claims Limit Exceeded",
+      "description": "Member EMP008 has already filed 6 claims this month (October 2024) and submits a 7th. Policy allows max 6 per month.",
+      "input": {
+        "member_id": "EMP008",
+        "policy_id": "PLUM_GHI_2024",
+        "claim_category": "CONSULTATION",
+        "treatment_date": "2024-10-29",
+        "claimed_amount": 2000,
+        "claims_history": [
+          { "claim_id": "CLM_0084", "date": "2024-10-05", "amount": 1500, "status": "APPROVED" },
+          { "claim_id": "CLM_0085", "date": "2024-10-08", "amount": 2000, "status": "APPROVED" },
+          { "claim_id": "CLM_0086", "date": "2024-10-12", "amount": 1800, "status": "APPROVED" },
+          { "claim_id": "CLM_0087", "date": "2024-10-16", "amount": 1200, "status": "APPROVED" },
+          { "claim_id": "CLM_0088", "date": "2024-10-20", "amount": 2500, "status": "APPROVED" },
+          { "claim_id": "CLM_0089", "date": "2024-10-25", "amount": 1000, "status": "APPROVED" }
+        ],
+        "documents": [
+          {
+            "file_id": "F041",
+            "actual_type": "PRESCRIPTION",
+            "content": {
+              "doctor_name": "Dr. V. Menon",
+              "doctor_registration": "KL/78901/2012",
+              "patient_name": "Ravi Menon",
+              "date": "2024-10-29",
+              "diagnosis": "Tension Headache",
+              "medicines": ["Ibuprofen 400mg"]
+            }
+          },
+          {
+            "file_id": "F042",
+            "actual_type": "HOSPITAL_BILL",
+            "content": {
+              "hospital_name": "Kerala Medical Centre",
+              "patient_name": "Ravi Menon",
+              "date": "2024-10-29",
+              "line_items": [
+                { "description": "GP Consultation", "amount": 1000 },
+                { "description": "Medicines", "amount": 1000 }
+              ],
+              "total": 2000
+            }
+          }
+        ]
+      },
+      "expected": {
+        "decision": "MANUAL_REVIEW",
+        "system_must": [
+          "Detect that this is the 7th claim in October (exceeds monthly limit of 6)",
+          "Route to manual review rather than auto-reject",
+          "Show the claims history count for the month in the trace"
+        ]
+      }
+    },
+    {
+      "case_id": "TC022",
+      "case_name": "Sub-Limit Exceeded — Consultation Category",
+      "description": "Consultation claim for ₹4,500 where the consultation sub-limit is ₹2,000. Amount exceeds category sub-limit but is within per-claim limit after co-pay.",
+      "input": {
+        "member_id": "EMP010",
+        "policy_id": "PLUM_GHI_2024",
+        "claim_category": "CONSULTATION",
+        "treatment_date": "2024-11-08",
+        "claimed_amount": 4500,
+        "ytd_claims_amount": 5000,
+        "documents": [
+          {
+            "file_id": "F043",
+            "actual_type": "PRESCRIPTION",
+            "content": {
+              "doctor_name": "Dr. K. Murthy",
+              "doctor_registration": "TN/56789/2013",
+              "patient_name": "Deepak Shah",
+              "date": "2024-11-08",
+              "diagnosis": "Cervical Spondylitis",
+              "medicines": ["Pregabalin 75mg", "Methylcobalamin 1500mcg"],
+              "tests_ordered": ["X-Ray Cervical Spine"]
+            }
+          },
+          {
+            "file_id": "F044",
+            "actual_type": "HOSPITAL_BILL",
+            "content": {
+              "hospital_name": "Fortis Healthcare",
+              "patient_name": "Deepak Shah",
+              "date": "2024-11-08",
+              "line_items": [
+                { "description": "Specialist Consultation", "amount": 2500 },
+                { "description": "X-Ray Cervical Spine", "amount": 1000 },
+                { "description": "Medicines", "amount": 1000 }
+              ],
+              "total": 4500
+            }
+          }
+        ]
+      },
+      "expected": {
+        "decision": "PARTIAL",
+        "approved_amount": 1800,
+        "notes": "Consultation sub-limit is ₹2,000. Claimed ₹4,500 capped to ₹2,000. Co-pay 10% on ₹2,000 = ₹200. Final: ₹1,800. Network discount (20%) also applies since Fortis is a network hospital — but sub-limit cap takes precedence after discount.",
+        "system_must": [
+          "Apply the consultation sub-limit cap of ₹2,000",
+          "Show which limit caused the reduction",
+          "Apply co-pay on the capped amount"
+        ]
+      }
+    }
+  ],
+  "notes": [
+    "TC013–TC014 test the VISION category (untested in original 12).",
+    "TC015 tests dependent/family floater claims.",
+    "TC016 tests annual OPD limit exhaustion (partial approval).",
+    "TC017 tests the initial 30-day waiting period (distinct from condition-specific waiting periods).",
+    "TC018 tests branded drug co-pay in PHARMACY category.",
+    "TC019 tests the 30-day submission deadline rule.",
+    "TC020 tests minimum claim amount threshold.",
+    "TC021 tests monthly claims limit (fraud threshold).",
+    "TC022 tests category sub-limit cap (consultation ₹2,000 sub-limit)."
+  ]
+}

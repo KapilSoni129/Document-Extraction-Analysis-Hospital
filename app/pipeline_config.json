@@ -1,0 +1,64 @@
+{
+  "ocr": {
+    "quality_thresholds": {
+      "good_min": 0.7,
+      "degraded_min": 0.2
+    },
+    "min_fields_for_confidence": 3,
+    "low_field_score_cap": 0.15,
+    "pdf_dpi": 200,
+    "line_grouping_y_threshold": 15
+  },
+  "document_verification": {
+    "classification_keywords": {
+      "PRESCRIPTION": ["dr.", "doctor", "prescription", "rx", "medicines", "diagnosis", "registration"],
+      "HOSPITAL_BILL": ["bill", "invoice", "total", "amount", "hospital", "clinic", "line_items", "consultation fee"],
+      "PHARMACY_BILL": ["pharmacy", "medicines", "tablet", "capsule", "medplus", "apollo pharmacy"],
+      "LAB_REPORT": ["lab", "report", "test", "result", "reference range", "specimen", "pathology"]
+    },
+    "test_quality_scores": {
+      "GOOD": 0.9,
+      "DEGRADED": 0.4,
+      "UNREADABLE": 0.2
+    }
+  },
+  "extraction": {
+    "patterns": {
+      "patient_name": "(?:patient|name|mr\\.|mrs\\.|ms\\.)\\s*[:\\-]?\\s*(.+)",
+      "doctor_name": "(?:dr\\.?|doctor)\\s+(.+)",
+      "date": "(\\d{1,2}[/-]\\d{1,2}[/-]\\d{2,4}|\\d{4}-\\d{2}-\\d{2})",
+      "diagnosis": "(?:diagnosis|condition|complaint)\\s*[:\\-]?\\s*(.+)",
+      "amount": "(?:rs\\.?|₹|inr)\\s*([\\d,]+(?:\\.\\d{2})?)",
+      "line_item": "(.+?)\\s+(?:rs\\.?|₹|inr)\\s*([\\d,]+(?:\\.\\d{2})?)"
+    }
+  },
+  "cross_validation": {
+    "patient_name_similarity_threshold": 0.85,
+    "member_name_similarity_threshold": 0.75
+  },
+  "decision": {
+    "initial_confidence": 1.0,
+    "fraud_signal_penalty": 0.15,
+    "component_failure_penalty": 0.2,
+    "minimum_confidence": 0.3
+  },
+  "policy_matching": {
+    "generic_words_excluded": ["and", "non", "self", "treatment", "procedures", "surgery", "programs", "dental", "vision", "medical", "health"],
+    "min_keyword_length": 3,
+    "diagnosis_keyword_map": {
+      "diabetes": ["diabetes", "t2dm", "diabetic"],
+      "hypertension": ["hypertension", "htn", "high blood pressure"],
+      "thyroid_disorders": ["thyroid", "hypothyroid", "hyperthyroid"],
+      "joint_replacement": ["joint replacement"],
+      "maternity": ["maternity", "pregnancy"],
+      "mental_health": ["mental", "depression", "anxiety"],
+      "obesity_treatment": ["obesity", "bariatric", "weight loss", "bmi"],
+      "hernia": ["hernia"],
+      "cataract": ["cataract"]
+    }
+  },
+  "financial": {
+    "default_annual_opd_limit": 50000.0,
+    "default_branded_drug_copay_percent": 30
+  }
+}

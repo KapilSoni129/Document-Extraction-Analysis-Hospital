@@ -1,0 +1,48 @@
+# Document generation
+fpdf2
+opencv-python-headless
+numpy
+Pillow
+
+# Backend
+fastapi
+uvicorn[standard]
+python-multipart
+
+# LLM
+google-genai
+
+# OCR
+easyocr
+PyMuPDF
+
+# Multi-agent orchestration
+langgraph
+langchain-core
+
+# Data validation
+pydantic>=2.0
+
+# Frontend
+streamlit
+httpx
+
+# Testing
+pytest
+
+# Evaluation
+pandas
+openpyxl
+
+# Observability
+opentelemetry-api
+opentelemetry-sdk
+opentelemetry-exporter-otlp-proto-http
+
+# Dev tools
+ruff
+pyright
+
+# Utilities
+python-dateutil
+python-dotenv

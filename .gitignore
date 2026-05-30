@@ -10,3 +10,5 @@ build/
 .DS_Store
 claims.db
 eval/eval_report.xlsx
+_full_backup/
+THOUGHT_PROCESS_FULL.md

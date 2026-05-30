@@ -188,6 +188,43 @@ CONSULTATION has a ₹2,000 sub-limit in `policy_terms.json`. If always enforced
 
 I'll implement opt-in because TC010 is from Plum's assignment (authoritative).
 
-### Next: Implementation
+---
 
-With these decisions made, I'll now implement the foundation — models, config, financial calculator — with unit tests at each step before moving to agent logic.
+## Step 6b: Implementing the Foundation
+
+### Pydantic Models (`app/models/`)
+
+- `state.py` — LangGraph `TypedDict` with all pipeline state fields (input, intake results, doc verification, extraction, policy checks, decision, trace)
+- `claim.py` — `ClaimRequest` (validated API input), `ClaimResponse` (typed API output with trace steps and amount breakdown)
+
+### Config Loader (`app/config.py`)
+
+Two `@lru_cache` functions — `load_policy()` and `load_pipeline_config()` — are the only entry points for all configuration. Helper functions (`get_member`, `get_category_config`, `is_network_hospital`, `get_exclusions`, etc.) provide typed access to specific policy sections.
+
+### Pipeline Config (`app/pipeline_config.json`)
+
+All system-tuning parameters in one file: OCR thresholds, document classification keywords, extraction regex patterns, cross-validation similarity thresholds, confidence scoring parameters, exclusion matching rules, and financial defaults.
+
+### Financial Calculator (`app/utils/financial.py`)
+
+Returns a typed `AmountBreakdown` dataclass showing every step:
+```
+original → eligible (after exclusions) → after discount → after sub-limit → after annual cap → after co-pay → final
+```
+
+All defaults come from `pipeline_config.json`. The function accepts `apply_sub_limit=False` (default) to handle the TC010/TC022 ambiguity.
+
+### Date Utils (`app/utils/date_utils.py`)
+
+Waiting period math: `is_within_waiting_period()` and `eligibility_date()`.
+
+### Extended Test Cases (`test_cases_extended.json`)
+
+10 additional test cases (TC013-TC022) covering: vision claims, dependents, annual limit cap, initial waiting period, branded drug co-pay, submission deadline, below minimum amount, monthly limit fraud, and sub-limit enforcement.
+
+### Unit Tests
+
+- `test_config.py` — 15 tests verifying policy loading, member lookups, network hospital detection, waiting period resolution, exclusion access
+- `test_financial.py` — 7 tests verifying exact amounts for TC004, TC006, TC010, TC015, TC016, TC018, TC022
+
+All expected values loaded from JSON files — single source of truth, no hardcoded assertions.
