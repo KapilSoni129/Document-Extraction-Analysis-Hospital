@@ -2,7 +2,6 @@
 
 from pathlib import Path
 
-import easyocr
 import numpy as np
 from PIL import Image
 
@@ -15,10 +14,12 @@ logger = get_logger("service.ocr")
 _reader = None
 
 
-def get_reader() -> easyocr.Reader:
+def get_reader():
     """Lazy-initialize EasyOCR reader (downloads model on first call)."""
     global _reader
     if _reader is None:
+        import easyocr
+
         logger.info("Initializing EasyOCR reader (first call, may download model)")
         _reader = easyocr.Reader(["en"], gpu=False)
         logger.info("EasyOCR reader ready")
