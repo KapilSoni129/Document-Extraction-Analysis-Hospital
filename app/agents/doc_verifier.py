@@ -113,23 +113,25 @@ def doc_verifier(state: ClaimProcessingState) -> dict:
     if missing:
         missing_names = [t.replace("_", " ").title() for t in missing]
         wrong_types = detected_types - set(required_types)
+        # Build file-to-type mapping for specific error messages
+        file_type_map = {d["file_name"]: d["detected_type"].replace("_", " ").title() for d in verified_docs}
+        file_details = ", ".join(f"'{f}' (detected as {t})" for f, t in file_type_map.items())
         if wrong_types:
             wrong_names = [t.replace("_", " ").title() for t in wrong_types]
             doc_errors.append(
                 {
                     "type": "WRONG_DOCUMENT_TYPE",
                     "message": f"For a {claim_category.title()} claim, we require: {', '.join(missing_names)}. "
-                    f"You uploaded: {', '.join(wrong_names)} instead. "
+                    f"Your uploads: {file_details}. "
                     f"Please upload the correct document(s) and resubmit your claim.",
                 }
             )
         else:
-            detected_names = [t.replace("_", " ").title() for t in detected_types]
             doc_errors.append(
                 {
                     "type": "MISSING_DOCUMENT",
                     "message": f"For a {claim_category.title()} claim, you are missing: {', '.join(missing_names)}. "
-                    f"You uploaded: {', '.join(detected_names)}. "
+                    f"Your uploads: {file_details}. "
                     f"Please also upload {'this document' if len(missing) == 1 else 'these documents'} "
                     f"and resubmit your claim.",
                 }
