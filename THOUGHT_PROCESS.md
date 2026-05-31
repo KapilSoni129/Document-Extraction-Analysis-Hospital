@@ -201,56 +201,62 @@ Once the system is fully built and tested (51 tests passing, 22/22 eval cases at
 1. **FastAPI backend** — the claims processing API
 2. **Streamlit frontend** — the user-facing UI
 
-### Decision: Split Deployment (Render + Streamlit Community Cloud)
+### Decision: Hugging Face Spaces (Docker) + Streamlit Community Cloud
 
 | Option | For | Pros | Cons | Verdict |
 |--------|-----|------|------|---------|
-| **Render (free Docker)** | FastAPI backend | Docker support, auto-deploy from GitHub, free tier with 750 hrs/month, custom health checks | Cold start ~30s after 15min inactivity | **CHOSEN for backend** |
-| **Streamlit Community Cloud** | Streamlit UI | Purpose-built for Streamlit, zero config, stays awake, direct GitHub deploy | Public repos only, 1GB RAM | **CHOSEN for frontend** |
+| **Hugging Face Spaces (Docker)** | FastAPI backend | 16GB RAM, 2 vCPU, free, no credit card, Docker native | Sleeps after 48hr inactivity | **CHOSEN for backend** |
+| **Streamlit Community Cloud** | Streamlit UI | Purpose-built for Streamlit, zero config, direct GitHub deploy | Public repos only | **CHOSEN for frontend** |
+| Render (free Docker) | Backend | Auto-deploy, health checks | 512MB RAM — too small for torch+EasyOCR, OOMs | Rejected (tried, failed) |
 | Railway | Either | $5 free credit, fast | Credit expires with heavy use | Rejected |
 | Fly.io | Either | Edge deployment, fast | Requires credit card | Rejected |
-| Vercel/Netlify | Frontend only | Great for static/Next.js | Not designed for Python backends | Not applicable |
 | Heroku | Either | Simple | No longer free | Rejected |
 
-**Why this split:**
-- Streamlit Community Cloud is literally made for Streamlit apps — one click deploy, no Docker needed, always warm. No reason to deploy Streamlit anywhere else.
-- Render handles Docker natively — the FastAPI app needs system-level dependencies (libgl for OpenCV/EasyOCR), so Docker is the cleanest path.
-- Both deploy directly from the same GitHub repo — no manual deployment steps.
+**Why Hugging Face Spaces won:**
+- 16GB RAM handles torch + EasyOCR model loading easily (Render's 512MB OOM'd)
+- Purpose-built for ML apps — expects heavy models, provides Docker support
+- Free tier, no credit card required
+- EasyOCR model pre-downloaded during Docker build, loaded at startup
+
+**Why Render was rejected:**
+- Tried first, hit 3 issues: (1) `libgl1-mesa-glx` removed from Debian Trixie, (2) PyTorch pulling 2GB CUDA libs, (3) 512MB RAM OOM when loading EasyOCR model at runtime
+- Even with CPU-only torch, the model + runtime exceeded memory limits
 
 ### Deployment Architecture
 
 ```
-┌─────────────────────┐       ┌──────────────────────────┐
-│  Streamlit Cloud    │       │  Render (Docker)         │
-│  (plum-claims-ui)   │       │  (plum-claims-api)       │
-│                     │       │                          │
-│  ui/app.py          │       │  uvicorn app.main:app    │
-│  Calls pipeline     │       │  /api/claims/process     │
-│  directly (no HTTP) │       │  /api/health             │
-└─────────────────────┘       └──────────────────────────┘
+┌─────────────────────────┐       ┌────────────────────────────────┐
+│  Streamlit Cloud        │       │  Hugging Face Spaces (Docker)  │
+│  (plum-claims-ui)       │       │  (plum-claims-api)             │
+│                         │       │                                │
+│  ui/app.py              │  HTTP │  uvicorn app.main:app :7860    │
+│  httpx calls to API ────│──────▶│  /api/claims/process           │
+│                         │       │  /api/health                   │
+└─────────────────────────┘       └────────────────────────────────┘
          │                              │
          └──────── Same GitHub repo ────┘
 ```
 
-Note: The Streamlit UI calls the LangGraph pipeline directly (imports `process_claim`), so it doesn't need the FastAPI server running. Both are independent entry points to the same processing logic — FastAPI for programmatic access, Streamlit for interactive demos.
+The Streamlit UI is a lightweight HTTP client — calls the HF Spaces backend via `httpx`. No torch/easyocr needed on the frontend.
 
 ### Configuration Files
 
-- `Dockerfile` — Python 3.12-slim with system deps for OCR, installs requirements, runs uvicorn
-- `render.yaml` — Render Blueprint for one-click backend deployment
+- `Dockerfile` — Python 3.12-slim, CPU torch, EasyOCR model pre-downloaded, port 7860
+- `render.yaml` — Render Blueprint (kept for reference, not actively used)
 - `.streamlit/config.toml` — Streamlit Cloud configuration (headless mode, theme)
 - `.dockerignore` — Excludes venv, .git, test docs, cache files from Docker image
 
 ### Deployment Issues Encountered & Solved
 
 1. **`libgl1-mesa-glx` removed from Debian Trixie** — Python 3.12-slim uses Trixie base. Replaced with `libgl1`.
-2. **PyTorch pulling 2GB+ of CUDA libraries** — Render has no GPU, 512MB RAM. Fixed by installing CPU-only torch from `https://download.pytorch.org/whl/cpu` before requirements.txt.
-3. **Port binding** — Render assigns a dynamic port via `$PORT` env var. Dockerfile CMD uses `${PORT:-10000}` to respect it.
+2. **PyTorch pulling 2GB+ of CUDA libraries** — No GPU needed. Fixed by installing CPU-only torch from `https://download.pytorch.org/whl/cpu`.
+3. **Render OOM (512MB)** — EasyOCR model download + torch runtime exceeded memory. Switched to HF Spaces (16GB).
+4. **EasyOCR model download at runtime** — Caused request timeouts. Fixed by pre-downloading during Docker build and loading at app startup.
 
 ### Live Deployment
 
-- **FastAPI API:** https://plum-claims-api.onrender.com
-- **Swagger Docs:** https://plum-claims-api.onrender.com/docs
-- **Health Check:** https://plum-claims-api.onrender.com/api/health
+- **FastAPI API:** https://snyder129-plum-claims-api.hf.space
+- **Swagger Docs:** https://snyder129-plum-claims-api.hf.space/docs
+- **Health Check:** https://snyder129-plum-claims-api.hf.space/api/health
 
-The backend deploys automatically on every push to `main`. Free tier sleeps after 15min inactivity — first request after sleep takes ~30s (cold start).
+The backend deploys by pushing to the HF Spaces git remote. Sleeps after 48hr inactivity — first request after sleep takes ~1min (cold start with Docker rebuild).

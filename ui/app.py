@@ -5,7 +5,7 @@ import os
 import httpx
 import streamlit as st
 
-API_BASE = os.getenv("API_BASE_URL", "https://plum-claims-api.onrender.com")
+API_BASE = os.getenv("API_BASE_URL", "https://snyder129-plum-claims-api.hf.space")
 
 st.set_page_config(page_title="Plum Claims Processing", layout="wide")
 st.title("Plum OPD Claims Processing System")

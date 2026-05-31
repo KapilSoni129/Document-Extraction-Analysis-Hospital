@@ -64,7 +64,7 @@ Endpoints:
 - `GET /api/claims/{claim_id}` — retrieve a specific claim and its decision
 
 API docs (local): http://localhost:8000/docs
-**Live API docs:** https://plum-claims-api.onrender.com/docs
+**Live API docs:** https://snyder129-plum-claims-api.hf.space/docs
 
 ### Streamlit UI
 
@@ -196,19 +196,19 @@ Claims and decisions are stored in `claims.db` (SQLite, auto-created on first re
 
 ## Deployment
 
-### Live API (Render)
+### Live API (Hugging Face Spaces)
 
-The FastAPI backend is deployed on Render (free tier, Docker):
+The FastAPI backend is deployed on Hugging Face Spaces (Docker, 16GB RAM):
 
-- **Live API:** https://plum-claims-api.onrender.com
-- **Interactive Docs (Swagger):** https://plum-claims-api.onrender.com/docs
-- **Health Check:** https://plum-claims-api.onrender.com/api/health
+- **Live API:** https://snyder129-plum-claims-api.hf.space
+- **Interactive Docs (Swagger):** https://snyder129-plum-claims-api.hf.space/docs
+- **Health Check:** https://snyder129-plum-claims-api.hf.space/api/health
 
-> Note: Free tier sleeps after 15min of inactivity. First request after sleep takes ~30s (cold start).
+> Note: Free tier sleeps after 48hr of inactivity. First request after sleep takes ~1min (Docker cold start).
 
 ### Streamlit UI (Streamlit Community Cloud)
 
-The Streamlit frontend is deployed on Streamlit Community Cloud:
+The Streamlit frontend is deployed on Streamlit Community Cloud and calls the HF Spaces API via HTTP.
 
 To deploy yourself:
 1. Go to [share.streamlit.io](https://share.streamlit.io)
