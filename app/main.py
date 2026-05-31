@@ -42,7 +42,7 @@ def health_check():
 def list_members():
     policy = load_policy()
     members = policy["members"]
-    return {"members": [{"id": m["member_id"], "name": m["name"], "type": m["type"]} for m in members]}
+    return {"members": [{"id": m["member_id"], "name": m["name"], "relationship": m.get("relationship", "")} for m in members]}
 
 
 @app.get("/api/policy/categories")
