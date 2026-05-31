@@ -11,32 +11,20 @@ st.set_page_config(page_title="Plum Claims Processing", layout="wide")
 st.title("Plum OPD Claims Processing System")
 
 
-def fetch_members():
-    resp = httpx.get(f"{API_BASE}/api/members", timeout=90)
-    if resp.status_code != 200 or "application/json" not in resp.headers.get("content-type", ""):
-        return None
-    return resp.json()["members"]
-
-
-def fetch_categories():
-    resp = httpx.get(f"{API_BASE}/api/policy/categories", timeout=90)
-    if resp.status_code != 200 or "application/json" not in resp.headers.get("content-type", ""):
-        return None
-    return resp.json()["categories"]
+def fetch_json(path):
+    resp = httpx.get(f"{API_BASE}{path}", timeout=90, follow_redirects=True)
+    resp.raise_for_status()
+    return resp.json()
 
 
 try:
-    members = fetch_members()
-    categories = fetch_categories()
+    members = fetch_json("/api/members")["members"]
+    categories = fetch_json("/api/policy/categories")["categories"]
 except (httpx.ConnectError, httpx.TimeoutException):
-    st.warning("⏳ Backend is waking up (free tier cold start). Please refresh in 30 seconds.")
+    st.warning("Backend is waking up (free tier cold start). Please refresh in 30 seconds.")
     st.stop()
 except Exception as e:
-    st.error(f"API connection error: {e}")
-    st.stop()
-
-if not members or not categories:
-    st.warning("⏳ Backend is starting up. Please refresh in 30 seconds.")
+    st.error(f"API error: {type(e).__name__}: {e}")
     st.stop()
 
 tab1, tab2 = st.tabs(["Submit Claim", "View Decision"])
