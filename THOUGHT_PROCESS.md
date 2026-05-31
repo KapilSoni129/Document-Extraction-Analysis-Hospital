@@ -363,3 +363,37 @@ Single-page app with claim submission form and decision viewer. Member dropdown,
 ### Step 7f: Test Document Generation (`generate_test_documents.py`)
 
 Generates mock medical documents for all 22 test cases using `fpdf2` (PDFs) and `Pillow` (JPGs). Includes configurable degradation (blur kernel) for TC002's unreadable document test. Each test case gets its own directory under `test_documents/`.
+
+---
+
+## Step 11: Evaluation
+
+I needed a way to run all 22 test cases in one command and get a clear pass/fail with full details. I wanted something a non-engineer (or an interviewer) could open and immediately understand.
+
+### Eval Design
+
+The eval runner (`eval/run_eval_excel.py`) does one thing: loads all test cases from both JSON files, builds the pipeline state for each, runs it through `process_claim()`, compares against expected outcomes, and exports everything to Excel.
+
+**Why Excel?** Three reasons:
+1. The assignment asks for an eval report — a spreadsheet is immediately scannable (color-code PASS/FAIL, sort by decision type, filter failures)
+2. Non-engineers (ops team, reviewers) can open it without any tooling
+3. Four sheets give different levels of detail without cluttering a single view
+
+### Output: `eval/eval_report.xlsx`
+
+| Sheet | What it shows |
+|-------|---------------|
+| **Results** | One row per test case: expected vs actual decision, amounts, confidence, rejection reasons, trace path, duration, pass/fail |
+| **Summary** | Pass rate, decision distribution (how many APPROVED/REJECTED/PARTIAL/MANUAL_REVIEW), average processing time |
+| **Trace Details** | Every pipeline step for every case — agent, action, input/output summaries, duration |
+| **Amount Breakdown** | Financial calculation steps for claims that reached the calculator — original → exclusions → discount → sub-limit → annual cap → co-pay → final |
+
+### Result: **22/22 (100% pass rate)**
+
+| Category | Cases | Result |
+|----------|-------|--------|
+| Document verification (TC001-TC003) | 3 | All pass (early stop, specific error messages) |
+| Policy logic (TC004-TC012) | 9 | All pass (correct decisions and amounts) |
+| Extended scenarios (TC013-TC022) | 10 | All pass |
+
+Also produces `eval/eval_report.json` for programmatic consumption. Both regeneratable with a single command.
