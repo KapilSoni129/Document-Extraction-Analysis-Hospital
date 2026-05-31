@@ -13,24 +13,32 @@ st.title("Plum OPD Claims Processing System")
 
 @st.cache_data(ttl=300)
 def fetch_members():
-    resp = httpx.get(f"{API_BASE}/api/members", timeout=60)
+    resp = httpx.get(f"{API_BASE}/api/members", timeout=90)
+    if resp.status_code != 200 or "application/json" not in resp.headers.get("content-type", ""):
+        return None
     return resp.json()["members"]
 
 
 @st.cache_data(ttl=300)
 def fetch_categories():
-    resp = httpx.get(f"{API_BASE}/api/policy/categories", timeout=60)
+    resp = httpx.get(f"{API_BASE}/api/policy/categories", timeout=90)
+    if resp.status_code != 200 or "application/json" not in resp.headers.get("content-type", ""):
+        return None
     return resp.json()["categories"]
 
 
 try:
     members = fetch_members()
     categories = fetch_categories()
-except httpx.ConnectError:
-    st.error("Cannot connect to API. The backend may be sleeping (free tier). Please wait 30s and refresh.")
+except (httpx.ConnectError, httpx.TimeoutException):
+    st.warning("⏳ Backend is waking up (free tier cold start). Please refresh in 30 seconds.")
     st.stop()
 except Exception as e:
-    st.error(f"API error: {e}")
+    st.error(f"API connection error: {e}")
+    st.stop()
+
+if not members or not categories:
+    st.warning("⏳ Backend is starting up. Please refresh in 30 seconds.")
     st.stop()
 
 tab1, tab2 = st.tabs(["Submit Claim", "View Decision"])
