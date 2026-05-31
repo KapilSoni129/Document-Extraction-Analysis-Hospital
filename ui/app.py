@@ -52,6 +52,23 @@ with tab1:
     uploaded_files = st.file_uploader("Upload Documents (PDF/JPG)", accept_multiple_files=True, type=["pdf", "jpg", "jpeg", "png"])
 
     if st.button("Process Claim", type="primary"):
+        # Frontend validations
+        errors = []
+        if claimed_amount <= 0:
+            errors.append("Claimed amount must be greater than ₹0.")
+        if not uploaded_files:
+            errors.append("Please upload at least one document (prescription, bill, etc.).")
+        from datetime import date
+        if date.fromisoformat(treatment_date) > date.today():
+            errors.append("Treatment date cannot be in the future.")
+        if date.fromisoformat(submission_date) < date.fromisoformat(treatment_date):
+            errors.append("Submission date cannot be before treatment date.")
+
+        if errors:
+            for err in errors:
+                st.error(err)
+            st.stop()
+
         with st.spinner("Processing claim (may take 30s on cold start)..."):
             files = []
             if uploaded_files:
