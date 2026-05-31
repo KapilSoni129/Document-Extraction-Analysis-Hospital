@@ -1,22 +1,37 @@
-"""Streamlit UI for claims processing system."""
+"""Streamlit UI for claims processing system — calls FastAPI backend via HTTP."""
 
-import json
-import sys
-from pathlib import Path
+import os
 
+import httpx
 import streamlit as st
 
-sys.path.insert(0, str(Path(__file__).parent.parent))
-
-from app.agents.graph import process_claim
-from app.config import load_policy
+API_BASE = os.getenv("API_BASE_URL", "https://plum-claims-api.onrender.com")
 
 st.set_page_config(page_title="Plum Claims Processing", layout="wide")
 st.title("Plum OPD Claims Processing System")
 
-policy = load_policy()
-members = policy["members"]
-categories = policy["opd_categories"]
+
+@st.cache_data(ttl=300)
+def fetch_members():
+    resp = httpx.get(f"{API_BASE}/api/members", timeout=60)
+    return resp.json()["members"]
+
+
+@st.cache_data(ttl=300)
+def fetch_categories():
+    resp = httpx.get(f"{API_BASE}/api/policy/categories", timeout=60)
+    return resp.json()["categories"]
+
+
+try:
+    members = fetch_members()
+    categories = fetch_categories()
+except httpx.ConnectError:
+    st.error("Cannot connect to API. The backend may be sleeping (free tier). Please wait 30s and refresh.")
+    st.stop()
+except Exception as e:
+    st.error(f"API error: {e}")
+    st.stop()
 
 tab1, tab2 = st.tabs(["Submit Claim", "View Decision"])
 
@@ -25,11 +40,11 @@ with tab1:
 
     col1, col2 = st.columns(2)
     with col1:
-        member_options = {f"{m['member_id']} - {m['name']}": m["member_id"] for m in members}
+        member_options = {f"{m['id']} - {m['name']}": m["id"] for m in members}
         selected_member = st.selectbox("Member", options=list(member_options.keys()))
         member_id = member_options[selected_member]
 
-        category_options = [k.upper() for k, v in categories.items() if v.get("covered", True)]
+        category_options = [c["id"] for c in categories if c.get("covered", True)]
         claim_category = st.selectbox("Claim Category", options=category_options)
 
         claimed_amount = st.number_input("Claimed Amount (₹)", min_value=0.0, value=1500.0, step=100.0)
@@ -43,44 +58,43 @@ with tab1:
     uploaded_files = st.file_uploader("Upload Documents (PDF/JPG)", accept_multiple_files=True, type=["pdf", "jpg", "jpeg", "png"])
 
     if st.button("Process Claim", type="primary"):
-        with st.spinner("Processing claim..."):
-            doc_list = []
+        with st.spinner("Processing claim (may take 30s on cold start)..."):
+            files = []
             if uploaded_files:
-                import tempfile, os
                 for f in uploaded_files:
-                    suffix = os.path.splitext(f.name)[1]
-                    with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
-                        tmp.write(f.read())
-                        doc_list.append({"file_name": f.name, "file_path": tmp.name})
+                    files.append(("documents", (f.name, f.read(), f.type)))
 
-            state = {
-                "claim_id": f"UI_{member_id}_{treatment_date}",
+            data = {
                 "member_id": member_id,
-                "policy_id": "PLUM_GHI_2024",
                 "claim_category": claim_category,
                 "treatment_date": treatment_date,
                 "submission_date": submission_date,
-                "claimed_amount": claimed_amount,
-                "hospital_name": hospital_name or None,
-                "ytd_claims_amount": ytd_claims,
-                "claims_history": [],
-                "documents": doc_list,
-                "simulate_component_failure": False,
+                "claimed_amount": str(claimed_amount),
+                "hospital_name": hospital_name or "",
+                "ytd_claims_amount": str(ytd_claims),
             }
 
-            result = process_claim(state)
+            try:
+                resp = httpx.post(
+                    f"{API_BASE}/api/claims/process",
+                    data=data,
+                    files=files if files else None,
+                    timeout=120,
+                )
+                resp.raise_for_status()
+                result = resp.json()
+            except httpx.TimeoutException:
+                st.error("Request timed out. The backend may be waking up — try again in 30s.")
+                st.stop()
+            except httpx.HTTPStatusError as e:
+                st.error(f"API error {e.response.status_code}: {e.response.text}")
+                st.stop()
+            except Exception as e:
+                st.error(f"Connection error: {e}")
+                st.stop()
+
             st.session_state["last_result"] = result
-            st.session_state["last_state"] = state
 
-            # Clean up temp files
-            for doc in doc_list:
-                try:
-                    import os
-                    os.unlink(doc["file_path"])
-                except OSError:
-                    pass
-
-        # Display results
         decision = result.get("decision", "UNKNOWN")
         color_map = {"APPROVED": "green", "PARTIAL": "orange", "REJECTED": "red", "MANUAL_REVIEW": "blue"}
         color = color_map.get(decision, "gray")
