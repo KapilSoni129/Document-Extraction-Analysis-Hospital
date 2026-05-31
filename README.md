@@ -1,3 +1,12 @@
+---
+title: Plum Claims Processing API
+emoji: 🏥
+colorFrom: green
+colorTo: blue
+sdk: docker
+app_port: 7860
+---
+
 # Plum Claims Processing System
 
 Multi-agent health insurance claims processing pipeline for OPD claims. Automates claim decisions using document verification, OCR extraction, policy evaluation, and explainable decision-making.

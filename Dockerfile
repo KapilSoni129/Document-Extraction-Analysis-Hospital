@@ -15,6 +15,6 @@ RUN python -c "import easyocr; easyocr.Reader(['en'], gpu=False)"
 
 COPY . .
 
-EXPOSE 10000
+EXPOSE 7860
 
-CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-10000}"]
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "7860"]
