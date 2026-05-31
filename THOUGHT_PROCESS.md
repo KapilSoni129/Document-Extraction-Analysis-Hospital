@@ -277,3 +277,48 @@ The fundamental problem: **Render free tier (512MB) is too small for any app tha
 **Hugging Face Spaces solved everything instantly:** 16GB RAM, 2 vCPU, purpose-built for ML apps. The same Dockerfile that OOM'd on Render works perfectly on HF Spaces. Model pre-downloads during build, loads at startup in ~5 seconds, and processes claims with OCR + Gemini Vision in 15-30 seconds.
 
 The Streamlit UI on Streamlit Community Cloud is a lightweight HTTP client — it just calls the HF Spaces API via `httpx`, no torch/easyocr needed on the frontend side.
+
+---
+
+## Step 8: Observability — OpenTelemetry + Jaeger
+
+The assignment weights Observability at 20%. I already had structured trace arrays in every agent response (timestamp, action, duration, input/output summaries). But for the full marks, I needed **distributed tracing** — real spans visible in a trace visualization tool.
+
+### Decision: OpenTelemetry + Jaeger
+
+| Option | Pros | Cons | Verdict |
+|--------|------|------|---------|
+| **OpenTelemetry SDK + Jaeger** | Industry standard, vendor-neutral, free local setup via Docker | Adds dependency | **CHOSEN** |
+| Datadog / New Relic | Beautiful UI, APM features | Paid, needs account | Rejected |
+| Custom trace viewer in Streamlit | Zero deps, self-contained | Reinventing the wheel, not industry-standard | Rejected |
+| Print statements / logging only | Already have structured logs | Doesn't demonstrate distributed tracing knowledge | Insufficient |
+
+### Implementation
+
+The tracing system (`app/services/tracing.py`) provides two context managers:
+
+```python
+@contextmanager
+def pipeline_span(claim_id):
+    """Root span — entire pipeline execution."""
+
+@contextmanager  
+def agent_span(agent_name, claim_id):
+    """Child span per agent — shows waterfall in Jaeger."""
+```
+
+Each agent node in the LangGraph graph is wrapped with `agent_span`. The graph's `async_process_claim` function wraps everything in `pipeline_span`. This produces a parent-child waterfall: one root span (`claims.pipeline`) with 6 child spans (one per agent).
+
+### What the Jaeger Waterfall Shows
+
+After processing a claim, Jaeger displays:
+- **Root span:** `claims.pipeline` with total duration (e.g., 10ms)
+- **Child spans:** `agent.intake`, `agent.doc_verifier`, `agent.doc_extractor`, `agent.cross_validator`, `agent.policy_evaluator`, `agent.decision_maker`
+- **Span attributes:** `claim.id`, `agent.name`, `agent.status`
+- **Early-exit claims** show fewer spans (e.g., 4 spans when doc_verifier rejects — skips extractor/cross_validator/policy)
+
+This demonstrates real observability: you can identify bottlenecks, trace failures to specific agents, and see which claims trigger early exits vs. full pipeline runs.
+
+### Graceful Degradation of Tracing
+
+If `OTEL_EXPORTER_OTLP_ENDPOINT` is not set, tracing is a no-op — zero overhead. If set but Jaeger is unreachable, the pipeline still works (traces are just lost). The system never crashes due to tracing failures.

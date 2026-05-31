@@ -183,6 +183,32 @@ To tune the system (e.g., change quality threshold, add classification keywords)
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | Optional | Send traces to Jaeger/Tempo/Datadog |
 | `OTEL_TRACE_CONSOLE` | Optional | Print traces to stdout (set to `1`) |
 
+### Distributed Tracing (Jaeger)
+
+View pipeline execution as a waterfall of spans in Jaeger:
+
+```bash
+# 1. Start Jaeger (Docker)
+docker run -d --name jaeger \
+  -p 16686:16686 \
+  -p 4318:4318 \
+  jaegertracing/all-in-one:latest
+
+# 2. Set endpoint in .env
+OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318
+
+# 3. Start the API server
+uvicorn app.main:app --reload --port 8000
+
+# 4. Submit a claim (via UI, curl, or Swagger docs)
+
+# 5. View traces
+open http://localhost:16686
+# Select service "plum-claims-pipeline" → Find Traces → click a trace for waterfall view
+```
+
+Each claim produces a root span (`claims.pipeline`) with child spans for every agent in the pipeline. Early-exit claims (e.g., wrong documents) show fewer spans.
+
 ### Persistent Storage
 
 Claims and decisions are stored in `claims.db` (SQLite, auto-created on first request). Retrieve past decisions via `GET /api/claims/{claim_id}`.

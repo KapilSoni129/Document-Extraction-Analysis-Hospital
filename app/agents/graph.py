@@ -171,6 +171,6 @@ async def async_process_claim(initial_state: dict) -> dict:
         result = await asyncio.to_thread(compiled_app.invoke, defaults)
         elapsed = int((time.time() - start) * 1000)
         span.set_attribute("pipeline.duration_ms", elapsed)
-        span.set_attribute("pipeline.decision", result.get("decision", "unknown"))
+        span.set_attribute("pipeline.decision", result.get("decision") or "unknown")
         result["_processing_time_ms"] = elapsed
     return result
