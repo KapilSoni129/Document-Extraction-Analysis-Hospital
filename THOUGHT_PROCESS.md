@@ -240,3 +240,17 @@ Note: The Streamlit UI calls the LangGraph pipeline directly (imports `process_c
 - `render.yaml` — Render Blueprint for one-click backend deployment
 - `.streamlit/config.toml` — Streamlit Cloud configuration (headless mode, theme)
 - `.dockerignore` — Excludes venv, .git, test docs, cache files from Docker image
+
+### Deployment Issues Encountered & Solved
+
+1. **`libgl1-mesa-glx` removed from Debian Trixie** — Python 3.12-slim uses Trixie base. Replaced with `libgl1`.
+2. **PyTorch pulling 2GB+ of CUDA libraries** — Render has no GPU, 512MB RAM. Fixed by installing CPU-only torch from `https://download.pytorch.org/whl/cpu` before requirements.txt.
+3. **Port binding** — Render assigns a dynamic port via `$PORT` env var. Dockerfile CMD uses `${PORT:-10000}` to respect it.
+
+### Live Deployment
+
+- **FastAPI API:** https://plum-claims-api.onrender.com
+- **Swagger Docs:** https://plum-claims-api.onrender.com/docs
+- **Health Check:** https://plum-claims-api.onrender.com/api/health
+
+The backend deploys automatically on every push to `main`. Free tier sleeps after 15min inactivity — first request after sleep takes ~30s (cold start).

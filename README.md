@@ -54,7 +54,8 @@ Endpoints:
 - `GET /api/claims` — list all processed claims (with optional `?member_id=` filter)
 - `GET /api/claims/{claim_id}` — retrieve a specific claim and its decision
 
-API docs at: http://localhost:8000/docs
+API docs (local): http://localhost:8000/docs
+**Live API docs:** https://plum-claims-api.onrender.com/docs
 
 ### Streamlit UI
 
@@ -183,6 +184,29 @@ Claims and decisions are stored in `claims.db` (SQLite, auto-created on first re
 - No external services required (works offline with EasyOCR + regex extraction)
 - Optional: Gemini API key for dual-input Vision extraction
 - Optional: OTLP endpoint for distributed tracing (Jaeger, Tempo, Datadog)
+
+## Deployment
+
+### Live API (Render)
+
+The FastAPI backend is deployed on Render (free tier, Docker):
+
+- **Live API:** https://plum-claims-api.onrender.com
+- **Interactive Docs (Swagger):** https://plum-claims-api.onrender.com/docs
+- **Health Check:** https://plum-claims-api.onrender.com/api/health
+
+> Note: Free tier sleeps after 15min of inactivity. First request after sleep takes ~30s (cold start).
+
+### Streamlit UI (Streamlit Community Cloud)
+
+The Streamlit frontend is deployed on Streamlit Community Cloud:
+
+To deploy yourself:
+1. Go to [share.streamlit.io](https://share.streamlit.io)
+2. Connect your GitHub account
+3. Select this repo → Branch: `main` → Main file: `ui/app.py`
+4. Add `GEMINI_API_KEY` in Advanced Settings → Secrets
+5. Click Deploy
 
 ## Test Results
 
