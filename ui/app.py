@@ -11,7 +11,6 @@ st.set_page_config(page_title="Plum Claims Processing", layout="wide")
 st.title("Plum OPD Claims Processing System")
 
 
-@st.cache_data(ttl=300)
 def fetch_members():
     resp = httpx.get(f"{API_BASE}/api/members", timeout=90)
     if resp.status_code != 200 or "application/json" not in resp.headers.get("content-type", ""):
@@ -19,7 +18,6 @@ def fetch_members():
     return resp.json()["members"]
 
 
-@st.cache_data(ttl=300)
 def fetch_categories():
     resp = httpx.get(f"{API_BASE}/api/policy/categories", timeout=90)
     if resp.status_code != 200 or "application/json" not in resp.headers.get("content-type", ""):
