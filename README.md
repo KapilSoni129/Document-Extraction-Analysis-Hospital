@@ -196,19 +196,24 @@ Claims and decisions are stored in `claims.db` (SQLite, auto-created on first re
 
 ## Deployment
 
-### Live API (Hugging Face Spaces)
+### Live Demo
 
-The FastAPI backend is deployed on Hugging Face Spaces (Docker, 16GB RAM):
-
-- **Live API:** https://snyder129-plum-claims-api.hf.space
-- **Interactive Docs (Swagger):** https://snyder129-plum-claims-api.hf.space/docs
-- **Health Check:** https://snyder129-plum-claims-api.hf.space/api/health
+| Service | URL |
+|---------|-----|
+| **Streamlit UI (try it)** | https://document-extraction-analysis-hospital-plum.streamlit.app/ |
+| **FastAPI Swagger Docs** | https://snyder129-plum-claims-api.hf.space/docs |
+| **HF Space** | https://huggingface.co/spaces/Snyder129/plum-claims-api |
+| **Health Check** | https://snyder129-plum-claims-api.hf.space/api/health |
 
 > Note: Free tier sleeps after 48hr of inactivity. First request after sleep takes ~1min (Docker cold start).
 
-### Streamlit UI (Streamlit Community Cloud)
+### Backend (Hugging Face Spaces)
 
-The Streamlit frontend is deployed on Streamlit Community Cloud and calls the HF Spaces API via HTTP.
+The FastAPI backend is deployed on Hugging Face Spaces (Docker, 16GB RAM, 2 vCPU). EasyOCR model is pre-downloaded during Docker build and loaded at startup for fast inference.
+
+### Frontend (Streamlit Community Cloud)
+
+The Streamlit UI is a lightweight HTTP client that calls the HF Spaces backend. No torch/easyocr runs on the frontend.
 
 To deploy yourself:
 1. Go to [share.streamlit.io](https://share.streamlit.io)

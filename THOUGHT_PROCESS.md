@@ -258,5 +258,22 @@ The Streamlit UI is a lightweight HTTP client — calls the HF Spaces backend vi
 - **FastAPI API:** https://snyder129-plum-claims-api.hf.space
 - **Swagger Docs:** https://snyder129-plum-claims-api.hf.space/docs
 - **Health Check:** https://snyder129-plum-claims-api.hf.space/api/health
+- **HF Space:** https://huggingface.co/spaces/Snyder129/plum-claims-api
+- **Streamlit UI:** https://document-extraction-analysis-hospital-plum.streamlit.app/
 
 The backend deploys by pushing to the HF Spaces git remote. Sleeps after 48hr inactivity — first request after sleep takes ~1min (cold start with Docker rebuild).
+
+### Why We Moved from Render to Hugging Face Spaces
+
+We initially deployed on **Render (free tier)** — it seemed like the obvious choice for Docker-based FastAPI apps. But we hit a wall:
+
+1. **First attempt:** `libgl1-mesa-glx` package removed from Debian Trixie → fixed by using `libgl1`
+2. **Second attempt:** PyTorch pulled 2GB+ of CUDA libraries → fixed by using CPU-only wheels
+3. **Third attempt:** Build succeeded but **502 errors** at runtime — Render's 512MB RAM couldn't hold torch (200MB) + EasyOCR model (150MB) + FastAPI + request processing simultaneously
+4. **Fourth attempt:** Made OCR import lazy, pre-downloaded model in build → still OOM'd when loading model at startup
+
+The fundamental problem: **Render free tier (512MB) is too small for any app that loads PyTorch**, even CPU-only. EasyOCR requires torch, and there's no way around that.
+
+**Hugging Face Spaces solved everything instantly:** 16GB RAM, 2 vCPU, purpose-built for ML apps. The same Dockerfile that OOM'd on Render works perfectly on HF Spaces. Model pre-downloads during build, loads at startup in ~5 seconds, and processes claims with OCR + Gemini Vision in 15-30 seconds.
+
+The Streamlit UI on Streamlit Community Cloud is a lightweight HTTP client — it just calls the HF Spaces API via `httpx`, no torch/easyocr needed on the frontend side.
