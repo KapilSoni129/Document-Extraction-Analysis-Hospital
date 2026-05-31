@@ -27,6 +27,16 @@ app.add_middleware(
 )
 
 
+@app.on_event("startup")
+def preload_ocr():
+    """Load EasyOCR model at startup so first request is fast."""
+    from app.services.ocr import get_reader
+
+    logger.info("Pre-loading EasyOCR model...")
+    get_reader()
+    logger.info("EasyOCR model ready")
+
+
 @app.get("/api/health")
 def health_check():
     from app.services.gemini import is_available as gemini_available

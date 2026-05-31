@@ -10,6 +10,9 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir torch torchvision --index-url https://download.pytorch.org/whl/cpu && \
     pip install --no-cache-dir -r requirements.txt
 
+# Pre-download EasyOCR model during build so it's ready at runtime
+RUN python -c "import easyocr; easyocr.Reader(['en'], gpu=False)"
+
 COPY . .
 
 EXPOSE 10000
