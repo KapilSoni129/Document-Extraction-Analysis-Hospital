@@ -1,0 +1,94 @@
+{
+  "TC001": [
+    "another_prescription.jpg",
+    "dr_sharma_prescription.jpg"
+  ],
+  "TC002": [
+    "blurry_bill.jpg",
+    "prescription.pdf"
+  ],
+  "TC003": [
+    "bill_arjun.jpg",
+    "prescription_rajesh.jpg"
+  ],
+  "TC004": [
+    "hospital_bill.jpg",
+    "hospital_bill.pdf",
+    "prescription.jpg"
+  ],
+  "TC005": [
+    "hospital_bill.pdf",
+    "prescription.pdf"
+  ],
+  "TC006": [
+    "dental_bill.pdf"
+  ],
+  "TC007": [
+    "hospital_bill.pdf",
+    "mri_report.pdf",
+    "prescription.pdf"
+  ],
+  "TC008": [
+    "hospital_bill.pdf",
+    "prescription.pdf"
+  ],
+  "TC009": [
+    "hospital_bill.jpg",
+    "prescription.pdf"
+  ],
+  "TC010": [
+    "hospital_bill.jpg",
+    "hospital_bill.pdf",
+    "prescription.jpg",
+    "prescription.pdf"
+  ],
+  "TC011": [
+    "hospital_bill.pdf",
+    "prescription.jpg"
+  ],
+  "TC012": [
+    "hospital_bill.pdf",
+    "prescription.pdf"
+  ],
+  "TC013": [
+    "hospital_bill.pdf",
+    "prescription.jpg"
+  ],
+  "TC014": [
+    "hospital_bill.pdf",
+    "prescription.pdf"
+  ],
+  "TC015": [
+    "hospital_bill.jpg",
+    "hospital_bill.pdf",
+    "prescription.jpg"
+  ],
+  "TC016": [
+    "hospital_bill.pdf",
+    "prescription.pdf"
+  ],
+  "TC017": [
+    "hospital_bill.pdf",
+    "prescription.jpg"
+  ],
+  "TC018": [
+    "pharmacy_bill.jpg",
+    "prescription.pdf"
+  ],
+  "TC019": [
+    "hospital_bill.pdf",
+    "prescription.pdf"
+  ],
+  "TC020": [
+    "pharmacy_bill.jpg",
+    "prescription.pdf"
+  ],
+  "TC021": [
+    "hospital_bill.pdf",
+    "prescription.pdf"
+  ],
+  "TC022": [
+    "hospital_bill.pdf",
+    "prescription.jpg"
+  ]
+}

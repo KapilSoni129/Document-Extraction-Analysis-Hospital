@@ -311,3 +311,55 @@ This ensures document-problem cases (TC001-TC003) stop early without wasting LLM
 - `test_intake.py` — 9 tests: valid claims pass, member not found, below minimum, deadline exceeded, waiting periods
 - `test_policy_evaluator.py` — 10 tests: exclusions, pre-auth, fraud signals, per-claim limit, financial calculations
 - `test_integration.py` — 10 tests: full pipeline end-to-end for key scenarios (approval, rejection, partial, manual review)
+
+---
+
+## Step 7: Services, API, and UI (Day 2-3)
+
+### Step 7a: OCR Service (`app/services/ocr.py`)
+
+EasyOCR wrapper that extracts text from images and PDFs. Returns structured output: `raw_text`, `lines` (grouped by y-position), `fields` (with per-field confidence and bounding boxes), and `avg_confidence`. Also provides `assess_readability()` which rates documents as GOOD/DEGRADED/UNREADABLE based on configurable thresholds from `pipeline_config.json`.
+
+PDF support via PyMuPDF: renders first page to image at configurable DPI, then runs OCR on the rasterized image.
+
+### Step 7b: Gemini Service (`app/services/gemini.py`)
+
+Uses `google.genai` SDK with Gemini 3.5 Flash (free tier, multimodal). Three functions:
+
+1. **`extract_with_vision()`** — Dual-input: sends both OCR text AND the raw image as a `Part.from_bytes()` object. Gemini sees the layout, handwriting, and stamps while also getting reliable character-level text from EasyOCR. Returns a validated `GeminiExtractionResult` (Pydantic model).
+
+2. **`classify_document_vision()`** — Sends just the image for document type classification (PRESCRIPTION, HOSPITAL_BILL, etc.).
+
+3. **`interpret_document()`** — Text-only fallback when no image is available.
+
+**Fallback chain:** Gemini validated → lenient parse (coerce types) → None (extraction skipped, confidence penalized).
+
+### Step 7c: SQLite Storage (`app/services/storage.py`)
+
+Persistent storage for claims and decisions:
+- `claims` table: input metadata (member, category, amount, dates)
+- `decisions` table: full output (decision, amounts, policy checks, trace as JSON)
+- Auto-creates schema on first connection
+- Clean interface: `save_claim()`, `save_decision()`, `get_claim()`, `get_decision()`, `list_claims()`
+
+### Step 7d: FastAPI Endpoints (`app/main.py`)
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| POST | `/api/claims/process` | Multipart form with file uploads (production) |
+| POST | `/api/claims/process-json` | JSON body (eval/testing) |
+| GET | `/api/claims/{claim_id}` | Retrieve past decision |
+| GET | `/api/claims` | List claims with optional member filter |
+| GET | `/api/members` | Member dropdown data |
+| GET | `/api/policy/categories` | Category list |
+| GET | `/api/health` | Health check (includes Gemini availability) |
+
+Both process endpoints: run async pipeline → persist to SQLite → return typed ClaimResponse.
+
+### Step 7e: Streamlit UI (`ui/app.py`)
+
+Single-page app with claim submission form and decision viewer. Member dropdown, category selection, amount input, date picker, file upload. Results show decision with color coding, amount breakdown table, expandable trace steps, and fraud signals.
+
+### Step 7f: Test Document Generation (`generate_test_documents.py`)
+
+Generates mock medical documents for all 22 test cases using `fpdf2` (PDFs) and `Pillow` (JPGs). Includes configurable degradation (blur kernel) for TC002's unreadable document test. Each test case gets its own directory under `test_documents/`.
