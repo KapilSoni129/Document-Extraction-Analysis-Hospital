@@ -191,3 +191,52 @@ I'll implement opt-in because TC010 is from Plum's assignment (authoritative).
 ### Next: Implementation
 
 With these decisions made, I'll now implement the foundation — models, config, financial calculator — with unit tests at each step before moving to agent logic.
+
+---
+
+## Step 7: Deployment Strategy
+
+Once the system is fully built and tested (51 tests passing, 22/22 eval cases at 100%), the next step is making it accessible. I need free hosting for two separate services:
+
+1. **FastAPI backend** — the claims processing API
+2. **Streamlit frontend** — the user-facing UI
+
+### Decision: Split Deployment (Render + Streamlit Community Cloud)
+
+| Option | For | Pros | Cons | Verdict |
+|--------|-----|------|------|---------|
+| **Render (free Docker)** | FastAPI backend | Docker support, auto-deploy from GitHub, free tier with 750 hrs/month, custom health checks | Cold start ~30s after 15min inactivity | **CHOSEN for backend** |
+| **Streamlit Community Cloud** | Streamlit UI | Purpose-built for Streamlit, zero config, stays awake, direct GitHub deploy | Public repos only, 1GB RAM | **CHOSEN for frontend** |
+| Railway | Either | $5 free credit, fast | Credit expires with heavy use | Rejected |
+| Fly.io | Either | Edge deployment, fast | Requires credit card | Rejected |
+| Vercel/Netlify | Frontend only | Great for static/Next.js | Not designed for Python backends | Not applicable |
+| Heroku | Either | Simple | No longer free | Rejected |
+
+**Why this split:**
+- Streamlit Community Cloud is literally made for Streamlit apps — one click deploy, no Docker needed, always warm. No reason to deploy Streamlit anywhere else.
+- Render handles Docker natively — the FastAPI app needs system-level dependencies (libgl for OpenCV/EasyOCR), so Docker is the cleanest path.
+- Both deploy directly from the same GitHub repo — no manual deployment steps.
+
+### Deployment Architecture
+
+```
+┌─────────────────────┐       ┌──────────────────────────┐
+│  Streamlit Cloud    │       │  Render (Docker)         │
+│  (plum-claims-ui)   │       │  (plum-claims-api)       │
+│                     │       │                          │
+│  ui/app.py          │       │  uvicorn app.main:app    │
+│  Calls pipeline     │       │  /api/claims/process     │
+│  directly (no HTTP) │       │  /api/health             │
+└─────────────────────┘       └──────────────────────────┘
+         │                              │
+         └──────── Same GitHub repo ────┘
+```
+
+Note: The Streamlit UI calls the LangGraph pipeline directly (imports `process_claim`), so it doesn't need the FastAPI server running. Both are independent entry points to the same processing logic — FastAPI for programmatic access, Streamlit for interactive demos.
+
+### Configuration Files
+
+- `Dockerfile` — Python 3.12-slim with system deps for OCR, installs requirements, runs uvicorn
+- `render.yaml` — Render Blueprint for one-click backend deployment
+- `.streamlit/config.toml` — Streamlit Cloud configuration (headless mode, theme)
+- `.dockerignore` — Excludes venv, .git, test docs, cache files from Docker image
